@@ -1,0 +1,18 @@
+#!/bin/sh -e
+# set -x
+# Copyright (c) 2022 Patrick Dowling
+# See project LICENSE file.
+
+BANK_SLOT=$1
+BANK_FILE=$2
+
+[ -n "$BANK_SLOT" ] || { echo "Missing slot number"; exit 1; }
+[ -e "$BANK_FILE" ] || { echo "Input file '$BANK_FILE' invalid"; exit 1; }
+[ -x "$(which fv1-eeprom-host)" ] || { echo "fv1-eeprom-host not executable"; exit 1; }
+
+# BANK_SLOT=$(printf '%d' '$BANK_SLOT')
+BANK_SIZE=4789
+BANK_OFFSET=5120 # 40 x 128
+
+fv1-eeprom-host $UPLOAD_OPTS -c W -p 128 -t $DERVISH_TTY -n $BANK_SIZE -o $(($BANK_OFFSET * $BANK_SLOT)) -f "$BANK_FILE"
+echo "Uploaded $BANK_FILE to slot $BANK_SLOT"

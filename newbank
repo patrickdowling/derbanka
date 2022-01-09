@@ -1,0 +1,34 @@
+#!/bin/sh -e
+#
+# Copyright (c) 2022 Patrick Dowling
+# See project LICENSE file.
+#
+# Build an empty bank with functional, but empty .asm files
+# $1 = directory
+# $2 = name (optional)
+
+BANK_DIR=$1
+
+[ -n "$BANK_DIR" ] || { echo "Usage: $0 <bank directory> (bank name)"; exit 1; }
+[ -d "$BANK_DIR" ] && { echo "Directory $1 already exists!"; exit 1; }
+
+mkdir -p "$BANK_DIR"
+
+for i in $(seq 0 7) ; do
+	filename="$BANK_DIR/${i}_source.asm"
+	cat << EOF > "$filename"
+; Program:
+; POT0: --
+; POT1: --
+; POT2: --
+	
+start:
+	nop
+EOF
+done
+
+cat << EOF > "$BANK_DIR/Makefile"
+BANK_NAME=${2:-$BANK_DIR}
+
+include ../derbanka/bank.makefile
+EOF
