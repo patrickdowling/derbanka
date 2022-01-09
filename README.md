@@ -62,11 +62,11 @@ The syntax is simple:
 .include "filename"
 ```
 
-So in tests scripts for LFO tests there are things like
+So in tests programs for LFO tests there are things like
 ```
 .include "pot0_rate.asm"
 ```
-which reads the pot and set the rate, or you can use common definitions like
+which reads the pot and set the rate, or you can set up a file with common definitions like
 ```
 EQU RATE_POT POT0
 EQU MAX 0x7fffff
