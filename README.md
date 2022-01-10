@@ -55,6 +55,10 @@ since then it can still be specified externally.
 
 
 ## Advanced
+### SPIN ASM
+The basic naming scheme remains the same (`[0-7]_....`) but files ending with `.spn` are assembled using the `-s` option (there's subtle differences). You can in theory mix & match in a single bank.
+Behaviour if there are multiple files with the same number prefix is undefined regardless of the extension.
+
 ### "Macro Assembler"
 While banks of test programs for another project I found myself repeating chunks of code. So before `.asm` files are sent to the assembler, they are pre-processed and can include other files.
 The syntax is simple:

@@ -10,17 +10,10 @@
 # Optionally it may also define (or pass via command line)
 # - BANK_SLOT which is the slot/bank number to upload to.
 #
-# This is a bit of a hack since it does _everything_ based on this artificial
-# target of .bin, which is actually three steps
-# - preprocess the .asm file to .masm (for includes)
-# - assemble the file
-# - try and extract program/pot information, also from the .masm
-#
-# The info is actually written to the .bin extension because we're assembling
-# directly into the bank file, so this ensure something gets generated.
-#
-# TODO See if this can be worked out with actualy build targets, but that seems
-# to fail because a) build directory b) the intermediate .masm files.
+# For each source file we not only want to run the assembler, but also generate
+# the pot/program labels. So there are two steps required, one to generate the
+# .masm file (which also runs the assembler, since we're assembling into the
+# target directly) and the other generates .bin (which is the labels).
 #
 .POSIX:
 .SUFFIXES:
@@ -33,11 +26,18 @@ SCRIPT_DIR ?= ../derbanka
 # Bank name may contain spaces which will confuse make
 BANK_FILE  = $(addsuffix .bank,$(BUILD_DIR)/$(shell echo '$(BANK_NAME)' | tr ' ' '_'))
 BANK_BIN   = $(BANK_FILE:.bank=.bin)
-SRC_FILES  = $(wildcard [01234567]_*.asm)
-BIN_FILES  = $(patsubst %,$(BUILD_DIR)/%, $(notdir $(SRC_FILES:.asm=.bin)))
+# Brute force support for .spn as well
+ASM_FILES  = $(wildcard [01234567]_*.asm)
+SPN_FILES  = $(wildcard [01234567]_*.spn)
+BIN_FILES  = $(patsubst %,$(BUILD_DIR)/%, $(notdir $(ASM_FILES:.asm=.bin) $(SPN_FILES:.spn=.bin)))
+
+# COUNT=$(words $(BIN_FILES))
+# ifneq (8, $(COUNT))
+# $(warning "Didn't find 8 source files, be warned")
+# endif
 
 AS = asfv1
-ASFLAGS = -b -q
+ASFLAGS = -b -q $(EXTRA_ASFLAGS)
 
 ifdef VERBOSE
 Q :=
@@ -67,7 +67,7 @@ $(shell echo $(notdir $(1)) | cut -d_ -f1)
 endef
 
 $(BANK_BIN): | $(BUILD_DIR)
-$(BANK_BIN): $(BIN_FILES) Makefile
+$(BANK_BIN): $(BIN_FILES) $(BIN_FILES:.bin=.masm) Makefile
 
 $(BANK_FILE): $(BANK_BIN)
 	$(ECHO) "Building $@..."
@@ -77,10 +77,17 @@ $(BANK_FILE): $(BANK_BIN)
 $(BUILD_DIR):
 	@mkdir -p $(BUILD_DIR)
 
-$(BUILD_DIR)/%.bin: %.asm
+$(BUILD_DIR)/%.masm: %.asm
 	$(ECHO) "MASM $<..."
 	$(Q)cat $< | $(SCRIPT_DIR)/macroasm.py > $(BUILD_DIR)/$(@F:.bin=.masm)
 	$(Q)$(AS) $(ASFLAGS) -p $(call program_number,$<) $(BUILD_DIR)/$(@F:.bin=.masm) $(BANK_BIN)
+
+$(BUILD_DIR)/%.masm: %.spn
+	$(ECHO) "MASM $<..."
+	$(Q)cat $< | $(SCRIPT_DIR)/macroasm.py > $(BUILD_DIR)/$(@F:.bin=.masm)
+	$(Q)$(AS) $(ASFLAGS) -s -p $(call program_number,$<) $(BUILD_DIR)/$(@F:.bin=.masm) $(BANK_BIN)
+
+$(BUILD_DIR)/%.bin: $(BUILD_DIR)/%.masm
 	$(ECHO) "INFO $(BUILD_DIR)/$(@F:.bin=.masm)"
 	$(Q)$(SCRIPT_DIR)/extractinfo.py $(BUILD_DIR)/$(@F:.bin=.masm) $@
 	$(Q)dd if=$@ bs=1 count=84 seek=$(shell echo $$(( 4117 + $(call program_number,$<) * 84 ))) conv=notrunc of=$(BANK_BIN) >/dev/null 2>&1
